@@ -27,9 +27,8 @@ The CHIP-8 system includes:
 This project is licensed under the MIT License - see the [LICENSE](https://opensource.org/licenses/MIT) file for details.
 
 ## Author
-[Your Name]
+Keanu Donovan
 
 ## Acknowledgments
 - CHIP-8 Technical Reference
 - SDL2 library developers
-- [Any other resources or inspirations]
