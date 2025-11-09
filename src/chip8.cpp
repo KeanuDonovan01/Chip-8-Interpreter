@@ -139,12 +139,20 @@ void Chip8::loadROM(const std::string& filename) {
     std::streampos filesize = file.tellg(); //retrieves current position
     file.seekg(0, std::ios::beg); //moves pi to begining
 
+    // Check if ROM is too large to fit in memory
+    if (START_ADDRESS + filesize > MEMORY_SIZE) {
+        std::cerr << "Error: ROM file too large. Maximum size is "
+                  << (MEMORY_SIZE - START_ADDRESS) << " bytes." << std::endl;
+        file.close();
+        return;
+    }
+
     //Creates memory buffer equalto file size
     std::vector<uint8_t> buffer(filesize); //Creates a vector with a size equal to filesize, 8-bit
-    file.read(reinterpret_cast<char*>(buffer.data()), filesize); //reads the rom data, buffer.data is point is cast to char* using reinterpret_cast to match the type of the file 
+    file.read(reinterpret_cast<char*>(buffer.data()), filesize); //reads the rom data, buffer.data is point is cast to char* using reinterpret_cast to match the type of the file
 
     for (size_t i=0; i<filesize; ++i) {
-        memory[0x200 + i] = buffer[i];
+        memory[START_ADDRESS + i] = buffer[i];
     } //Loop iterates over each byte in hte buffer and copies it into chip-8 memory, rom data to memory
     file.close(); //Closes file
 }
@@ -169,21 +177,7 @@ void Chip8::cycle() {
     // The function pointer stored at that index is then invoked using the ((*this).*(...))() syntax
     ((*this).*(table[instruction]))();
 
-    // Update timers
-    // Decrement the delay timer if it's greater than zero
-    if (delayTimer > 0) {
-        --delayTimer;
-    }
-
-    // Decrement the sound timer if it's greater than zero
-    // If the sound timer reaches zero, a beep is produced
-    if (soundTimer > 0) {
-        if (soundTimer == 1) {
-            // BEEP!
-            // You can add code here to produce a beep sound
-        }
-        --soundTimer;
-    }
+    // Note: Timers are decremented in main.cpp at 60Hz, not here
 }
 
 void Chip8::Table0()
@@ -385,7 +379,7 @@ void Chip8::op_8xy2() {
 void Chip8::op_8xy3() {
     //opcode: 8xy3
     //Performs bitwise XOR on values of registers Vx and Vy, replace that value with value in Vx
-    int8_t Vx = (opcode & 0x0F00) >> 8; //Extracts the third bit and right shifts it 8 bits
+    uint8_t Vx = (opcode & 0x0F00) >> 8; //Extracts the third bit and right shifts it 8 bits
 
     uint8_t Vy = (opcode & 0x00F0) >> 4; //Extracts the second bit and right shifts it 4 bits
 
@@ -395,10 +389,10 @@ void Chip8::op_8xy3() {
 void Chip8::op_8xy4() {
     //opcode: 8xy4
     //The values of Vx and Vy are added together. If the result is greater than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0. Only the lowest 8 bits of the result are kept, and stored in Vx.
-    int8_t Vx = (opcode & 0x0F00) >> 8; //Extracts the third bit and right shifts it 8 bits
+    uint8_t Vx = (opcode & 0x0F00) >> 8; //Extracts the third bit and right shifts it 8 bits
 
     uint8_t Vy = (opcode & 0x00F0) >> 4; //Extracts the second bit and right shifts it 4 bits
-    
+
     uint16_t sum = registers[Vx] + registers[Vy];
 
     // Set the carry flag in VF
@@ -414,7 +408,7 @@ void Chip8::op_8xy5() {
 
     uint8_t Vy = (opcode & 0x00F0) >> 4; //Extracts the second bit and right shifts it 4 bits
 
-    registers[0xF] = (Vx > Vy) ? 1 : 0;
+    registers[0xF] = (registers[Vx] >= registers[Vy]) ? 1 : 0;
 
     registers[Vx] -= registers[Vy];
 
@@ -424,13 +418,13 @@ void Chip8::op_8xy6() {
     //opcode: 8xy6
     //If the least-significant bit of Vx is 1, then VF is set to 1, otherwise 0. Then Vx is divided by 2.
     uint8_t Vx = (opcode & 0x0F00) >> 8;
-    
+
     // Check the least significant bit of Vx using a bitwise AND operation with 0x1
     // If the least significant bit is 1, set VF to 1, otherwise set VF to 0
-    registers[0xF] = (Vx & 0x1) != 0 ? 1 : 0;
+    registers[0xF] = (registers[Vx] & 0x1) != 0 ? 1 : 0;
 
     // Perform a logical right shift on Vx by 1 bit, effectively dividing Vx by 2
-    registers[Vx] >>= 1; 
+    registers[Vx] >>= 1;
 
 }
 
@@ -468,7 +462,7 @@ void Chip8::op_9xy0() {
 
     uint8_t Vy = (opcode & 0x00F0) >> 4; //Extracts the second bit and right shifts it 4 bits
 
-    pc += (Vx != Vy) ? 2 : 0;
+    pc += (registers[Vx] != registers[Vy]) ? 2 : 0;
 }
 
 void Chip8::op_Annn() {
@@ -562,6 +556,12 @@ void Chip8::op_Ex9E() {
     // Get the key value from the Vx register
     uint8_t key = registers[Vx];
 
+    // Bounds check: ensure key is within valid range (0-15)
+    if (key >= KEY_COUNT) {
+        std::cerr << "Error: Invalid key value " << (int)key << " in op_Ex9E" << std::endl;
+        return;
+    }
+
     // Check if the key corresponding to the value in Vx is currently pressed
     if (keypad[key]) {
         // If the key is pressed, skip the next instruction by increasing the program counter (PC) by 2
@@ -581,6 +581,12 @@ void Chip8::op_ExA1() {
 
     // Get the key value from the Vx register
     uint8_t key = registers[Vx];
+
+    // Bounds check: ensure key is within valid range (0-15)
+    if (key >= KEY_COUNT) {
+        std::cerr << "Error: Invalid key value " << (int)key << " in op_ExA1" << std::endl;
+        return;
+    }
 
     // Check if the key corresponding to the value in Vx is currently not pressed
     if (!keypad[key]) {
@@ -664,9 +670,15 @@ void Chip8::op_Fx29() {
     //opcode: fx29
     //The value of I is set to the location for the hexadecimal sprite corresponding to the value of Vx.
     uint8_t Vx = (opcode &0x0F00) >> 8;
-    
+
     // Get the hexadecimal digit value from register Vx
     uint8_t digit = registers[Vx];
+
+    // Bounds check: only hex digits 0-F are valid
+    if (digit > 0xF) {
+        std::cerr << "Error: Invalid digit " << (int)digit << " in op_Fx29. Only 0-F are valid." << std::endl;
+        return;
+    }
 
     // Set the index register I to the memory location of the sprite for the digit
     // Each sprite occupies 5 bytes in memory, so we multiply the digit by 5
