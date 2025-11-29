@@ -3,6 +3,7 @@
 #include <vector>
 #include <cstdint>
 #include <iostream>
+#include <cstring>
 #include <random>
 #include <chrono>
 
@@ -502,8 +503,8 @@ void Chip8::op_Dxyn() {
 
     // Get the actual X and Y coordinates from the registers
     // Use modulo to ensure the coordinates wrap around the screen
-    uint8_t xPos = registers[Vx] % VIDEO_WIDTH;
-    uint8_t yPos = registers[Vy] % VIDEO_HEIGHT;
+    uint8_t xPos = registers[Vx];
+    uint8_t yPos = registers[Vy];
 
     // Reset the collision flag (VF) to 0
     registers[0xF] = 0;
@@ -519,25 +520,24 @@ void Chip8::op_Dxyn() {
             // We use a bit mask that starts at 10000000 and shifts right
             uint8_t spritePixel = spriteByte & (0x80 >> col);
             
-            // Check if the current pixel is within the screen bounds
-            if (xPos + col < VIDEO_WIDTH && yPos + row < VIDEO_HEIGHT) {
+            // Calculate wrapped screen coordinates so drawing behaves like the
+            // original CHIP-8 hardware and avoids clipping at the edges.
+            uint8_t xCoord = (xPos + col) % VIDEO_WIDTH;
+            uint8_t yCoord = (yPos + row) % VIDEO_HEIGHT;
+
+            // If the sprite pixel is on (1)
+            if (spritePixel) {
                 // Calculate the address of the screen pixel
-                uint32_t* screenPixel = &video[(yPos + row) * VIDEO_WIDTH + (xPos + col)];
+                uint32_t* screenPixel = &video[yCoord * VIDEO_WIDTH + xCoord];
 
-                // If the sprite pixel is on (1)
-                if (spritePixel) {
-                    // Check for collision
-                    // If the screen pixel is already on (white), set VF to 1
-                    if (*screenPixel == 0xFFFFFFFF) {
-                        registers[0xF] = 1;
-                    }
-
-                    // XOR the screen pixel
-                    // This will flip the pixel: off->on or on->off
-                    *screenPixel ^= 0xFFFFFFFF;
+                // Check for collision
+                if (*screenPixel != 0) {
+                    registers[0xF] = 1;
                 }
+
+                // XOR the screen pixel
+                *screenPixel ^= 0xFFFFFFFF;
             }
-            // Note: Pixels outside the screen bounds are simply ignored (clipped)
         }
     }
 

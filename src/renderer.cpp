@@ -137,19 +137,27 @@ bool Renderer::handleKeyEvent(SDL_Keycode key, bool isPressed, Chip8& chip8) {
     int chipKey = -1;
     switch (key) {
         case SDLK_x: chipKey = 0x0; break;
-        case SDLK_1: chipKey = 0x1; break;
+        case SDLK_1:
+        case SDLK_w: chipKey = 0x1; break; // Left paddle up / CHIP-8 1
         case SDLK_2: chipKey = 0x2; break;
         case SDLK_3: chipKey = 0x3; break;
-        case SDLK_q: chipKey = 0x4; break;
-        case SDLK_w: chipKey = 0x5; break;
-        case SDLK_e: chipKey = 0x6; break;
-        case SDLK_a: chipKey = 0x7; break;
-        case SDLK_s: chipKey = 0x8; break;
-        case SDLK_d: chipKey = 0x9; break;
+        case SDLK_q:
+        case SDLK_s: chipKey = 0x4; break; // Left paddle down / CHIP-8 4
+        case SDLK_5: chipKey = 0x5; break;
+        case SDLK_e:
+        case SDLK_6: chipKey = 0x6; break;
+        case SDLK_a:
+        case SDLK_7: chipKey = 0x7; break;
+        case SDLK_8: chipKey = 0x8; break;
+        case SDLK_d:
+        case SDLK_9: chipKey = 0x9; break;
         case SDLK_z: chipKey = 0xA; break;
-        case SDLK_c: chipKey = 0xB; break;
-        case SDLK_4: chipKey = 0xC; break;
-        case SDLK_r: chipKey = 0xD; break;
+        case SDLK_c:
+        case SDLK_b: chipKey = 0xB; break;
+        case SDLK_4:
+        case SDLK_UP: chipKey = 0xC; break; // Right paddle up / CHIP-8 C
+        case SDLK_r:
+        case SDLK_DOWN: chipKey = 0xD; break; // Right paddle down / CHIP-8 D
         case SDLK_f: chipKey = 0xE; break;
         case SDLK_v: chipKey = 0xF; break;
         case SDLK_ESCAPE:
